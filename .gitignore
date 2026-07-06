@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated sample output
+sample.xlsx
+*.xlsx
+!examples/*.xlsx
