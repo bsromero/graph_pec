@@ -68,8 +68,8 @@ otherwise Excel substitutes a fallback. The setting is always written into the f
 
 **Axes.** Both X and Y: line color black (#000000), weight **0.75 pt**. No axis titles.
 No tick marks. Labels in Gotham regular size 20, black, not bold, **no decimals**.
-For the X-axis only: if there are **more than 10 datapoints**, rotate tick labels to
-**90° (vertical)** and set label position to **low**.
+For the X-axis: **always** rotate tick labels to **270° (vertical)** and set label
+position to **low**.
 
 **Gridlines.** None.
 
@@ -81,7 +81,7 @@ For the X-axis only: if there are **more than 10 datapoints**, rotate tick label
   — the helper spreads clustered last-point labels vertically (leaving well-separated ones
   in place) and turns on **leader lines colored #A6A6A6** so each moved label still points
   back to its datapoint.
-- Bar charts: show **only the value**, in the series color, rotated **90° (vertical)**.
+- Bar charts: show **only the value**, in the series color, rotated **270° (vertical)**.
 
 **Size & placement.** Chart size **8 cm height × 10.6 cm width**. Place the chart in
 columns that are completely empty, usually just to the right of the data.

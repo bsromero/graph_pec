@@ -31,9 +31,8 @@ AXIS_LINE_EMU = int(0.75 * EMU_PER_PT)  # 0.75 pt axis lines
 BAR_GAP = 25                          # gap width %
 CHART_H_CM = 8.0
 CHART_W_CM = 10.6
-ROT_VERT = -5400000                   # 90deg clockwise, in 1/60000 deg
+ROT_VERT = 16200000                   # 270 deg, in 1/60000 deg (vertical text)
 NUMFMT = "0"                          # no decimals
-ROTATE_THRESHOLD = 10                 # >10 datapoints -> vertical x labels
 LEADER_COLOR = "A6A6A6"               # leader-line color
 # Label-distribution tuning (fractions of chart area):
 _PLOT_V_SPAN = 0.62   # approx. plot-area height as a fraction of the chart
@@ -138,7 +137,7 @@ def _style_axis(axis, rotate=False, is_x=False):
     axis.spPr = GraphicalProperties(ln=LineProperties(solidFill="000000", w=AXIS_LINE_EMU))
     axis.number_format = NUMFMT
     axis.txPr = _rich("000000", rot=ROT_VERT if rotate else None)
-    if is_x and rotate:
+    if is_x:
         axis.tickLblPos = "low"
 
 
@@ -207,7 +206,6 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
     colors = resolve_colors(header_names, is_countries)
 
     n_points = cats_max_row - cats_min_row + 1
-    rotate = n_points > ROTATE_THRESHOLD
 
     for s, color in zip(chart.series, colors):
         s.graphicalProperties = GraphicalProperties()
@@ -221,7 +219,8 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
             s.dLbls = _bar_labels(color)
 
     chart.title = _make_title(title)
-    _style_axis(chart.x_axis, rotate=rotate, is_x=True)
+    # X-axis labels are always vertical (270 deg) with low label position.
+    _style_axis(chart.x_axis, rotate=True, is_x=True)
     _style_axis(chart.y_axis, rotate=False, is_x=False)
 
     chart.legend.position = "b"
