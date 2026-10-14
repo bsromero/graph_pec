@@ -9,6 +9,7 @@ from openpyxl.chart.title import Title
 from openpyxl.chart.text import Text, RichText
 from openpyxl.chart.label import DataLabelList, DataLabel
 from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.chart.marker import DataPoint
 from openpyxl.drawing.line import LineProperties
 from openpyxl.drawing.text import (
     Paragraph, ParagraphProperties, CharacterProperties, Font as DrawingFont,
@@ -88,14 +89,24 @@ def _next_distinct(used):
     return f"{int(r*255):02X}{int(g*255):02X}{int(b*255):02X}"
 
 
+def _country_color(name):
+    key = _norm(name)
+    return _COUNTRY_NORM.get(key) or _COUNTRY_NORM.get(_norm(_ALIASES.get(key, "")))
+
+
+def _mostly_countries(names):
+    """True when at least half of the (non-empty) names are known countries."""
+    names = [n for n in names if n not in (None, "")]
+    return bool(names) and sum(bool(_country_color(n)) for n in names) * 2 >= len(names)
+
+
 def resolve_colors(names, is_countries):
     """Return a hex color (no '#') for each series name, per the spec rules."""
     used, out = set(), []
     for i, n in enumerate(names):
         c = None
         if is_countries:
-            key = _norm(n)
-            c = _COUNTRY_NORM.get(key) or _COUNTRY_NORM.get(_norm(_ALIASES.get(key, "")))
+            c = _country_color(n)
         if not c:
             if not is_countries and i < len(DEFAULT_PALETTE) and DEFAULT_PALETTE[i].upper() not in used:
                 c = DEFAULT_PALETTE[i]
@@ -153,6 +164,23 @@ def _bar_labels(color, numfmt):
     return dl
 
 
+def _bar_labels_by_point(colors, numfmt):
+    """Value-only labels, each in the color of its own bar."""
+    dl = _bar_labels("000000", numfmt)
+    pts = []
+    for i, color in enumerate(colors):
+        pt = DataLabel(idx=i)
+        pt.showVal = True
+        for f in ("showSerName", "showCatName", "showLegendKey", "showPercent",
+                  "showBubbleSize"):
+            setattr(pt, f, False)
+        pt.numFmt = numfmt
+        pt.txPr = _rich(color)
+        pts.append(pt)
+    dl.dLbl = pts
+    return dl
+
+
 def _line_labels(color, last_idx, numfmt):
     dl = DataLabelList()
     for f in ("showVal", "showSerName", "showCatName", "showLegendKey",
@@ -193,7 +221,8 @@ def _number_format(ws, min_col, max_col, first_row, max_row, value_kind):
 
 def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
               cats_col, cats_min_row, cats_max_row, anchor,
-              is_countries=False, titles_from_data=True, value_kind=None):
+              is_countries=False, titles_from_data=True, value_kind=None,
+              color_by=None):
     """
     Add a styled native chart to worksheet `ws`.
 
@@ -207,6 +236,10 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
     value_kind : 'currency' (no decimals) or 'percent' (one decimal). If None,
                  it is inferred: a '%' in the first data cell's number format
                  means percent, otherwise currency/no decimals.
+    color_by   : bar charts only. 'series' (one color per series) or 'category'
+                 (one color per bar, from the category label). If None: a
+                 single-series bar chart whose categories are countries is
+                 colored per country ('category'); otherwise 'series'.
     """
     chart_type = chart_type.lower()
     chart = LineChart() if chart_type == "line" else BarChart()
@@ -232,6 +265,26 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
     numfmt = _number_format(ws, min_col, max_col,
                             min_row + 1 if titles_from_data else min_row,
                             max_row, value_kind)
+
+    cat_names = [ws.cell(row=r, column=cats_col).value
+                 for r in range(cats_min_row, cats_max_row + 1)]
+    if chart_type == "bar" and color_by is None:
+        cats_are_countries = _mostly_countries(cat_names)
+        color_by = ("category" if len(chart.series) == 1 and cats_are_countries
+                    else "series")
+    if chart_type == "bar" and color_by == "category":
+        # Countries on the category axis: every bar takes its country's color
+        # (never one flat color for all of them just because it's one series).
+        pt_colors = resolve_colors(cat_names, True)
+        for s in chart.series:
+            s.graphicalProperties = GraphicalProperties()
+            s.graphicalProperties.solidFill = pt_colors[0]
+            s.dPt = [DataPoint(idx=i, invertIfNegative=False,
+                               spPr=GraphicalProperties(solidFill=c,
+                                                        ln=LineProperties(solidFill=c)))
+                     for i, c in enumerate(pt_colors)]
+            s.dLbls = _bar_labels_by_point(pt_colors, numfmt)
+        colors = []   # skip the per-series loop below
 
     for s, color in zip(chart.series, colors):
         s.graphicalProperties = GraphicalProperties()

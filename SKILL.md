@@ -14,7 +14,9 @@ point of this skill is that every chart comes out identical to the rules below.
 1. Identify the data block in the worksheet: the columns holding series, the header row
    with series names, and the column holding category-axis labels.
 2. Decide `chart_type` (`"line"` or `"bar"`) and whether the series are **countries**
-   (set `is_countries=True` to apply the country color table).
+   (set `is_countries=True` to apply the country color table). If it's a bar chart with
+   **one series and countries on the X axis**, every bar gets its country color — the
+   helper detects this on its own (or force it with `color_by="category"`).
 3. Get the title from the user — they always supply it.
 4. Decide the number format: `value_kind="currency"` (no decimals) or
    `value_kind="percent"` (one decimal). If omitted, the helper infers it from the
@@ -57,9 +59,16 @@ Read `scripts/excel_charts.py` if you need to extend it.
 - Bar chart: **gap width 25%**.
 - Every series (line or bar) gets a different color.
 
-**Colors — countries.** When series are countries, use the exact color table in
+**Colors — countries.** Whenever countries appear in a chart, use the exact color table in
 `scripts/excel_charts.py` (`_COUNTRY_TABLE`). If a country is present but not in the
-table, assign a color distinct from every color already used.
+table, assign a color distinct from every color already used. This applies **both** when
+countries are the series (lines or grouped bars) **and** when countries are the
+categories of a single-series bar chart (e.g. "Procedimientos para registrar propiedad"
+with one bar per country): **each bar takes its own country's color** (Chile red, Brasil
+purple, LATAM black, …) and its value label takes the same color. Never paint all the
+bars one flat color just because they belong to one series. The helper does this
+automatically (`color_by="category"` is inferred when there is one series and the
+category labels are countries); pass `color_by` explicitly to override.
 
 **Colors — non-countries.** Use this priority palette in order, then pick further colors
 that contrast strongly with those already used:

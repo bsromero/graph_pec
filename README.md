@@ -13,7 +13,8 @@ style, automatically.
 - **Line charts** — 5 pt lines, last-datapoint labels (value + series name) distributed so
   they don't overlap, with leader lines back to each point.
 - **Bar charts** — 25% gap width, horizontal value-only labels.
-- **Country color table** — consistent, named colors when your series are countries.
+- **Country color table** — consistent, named colors whenever countries appear, whether
+  as series or as the bars of a single-series bar chart (each bar in its country's color).
 - **House typography & axes** — Gotham 20 pt throughout, black 0.75 pt axes, no gridlines,
   no legend, x labels vertical (270°), no decimals for currency / one decimal for percentages.
 

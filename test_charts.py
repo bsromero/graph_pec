@@ -36,6 +36,18 @@ add_chart(ws2, "bar", title="Revenue by region",
           cats_col=1, cats_min_row=2, cats_max_row=5,
           anchor="F2", is_countries=False, value_kind="currency")
 
+# --- Sheet 3: single-series bar chart with countries as categories
+#     -> each bar (and its label) takes its own country color
+ws3 = wb.create_sheet("BarCountries")
+ws3.append(["País", "Procedimientos"])
+for row in [("Brasil", 14), ("Venezuela", 10), ("Uruguay", 9), ("LATAM", 8),
+            ("Chile", 6), ("Perú", 6)]:
+    ws3.append(row)
+add_chart(ws3, "bar", title="Procedimientos para registrar propiedad (2019)",
+          min_col=2, max_col=2, min_row=1, max_row=7,
+          cats_col=1, cats_min_row=2, cats_max_row=7,
+          anchor="D2", value_kind="currency")
+
 out = "sample.xlsx"
 save_workbook(wb, out)
 print(f"saved {out}")
