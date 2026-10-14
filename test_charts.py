@@ -5,7 +5,7 @@ from excel_charts import add_chart, save_workbook
 
 wb = Workbook()
 
-# --- Sheet 1: line chart, countries, 13 data points (>10 -> vertical x labels)
+# --- Sheet 1: line chart, countries, percentages (one decimal)
 ws = wb.active
 ws.title = "Line"
 years = list(range(2008, 2021))            # 13 points
@@ -20,9 +20,9 @@ for i, y in enumerate(years, start=2):
 add_chart(ws, "line", title="PISA score by country, 2008-2020",
           min_col=2, max_col=5, min_row=1, max_row=14,
           cats_col=1, cats_min_row=2, cats_max_row=14,
-          anchor="H2", is_countries=True)
+          anchor="H2", is_countries=True, value_kind="percent")
 
-# --- Sheet 2: bar chart, non-country series (uses priority palette)
+# --- Sheet 2: bar chart, non-country series, currency (no decimals)
 ws2 = wb.create_sheet("Bar")
 cats = ["North", "South", "East", "West"]
 ws2["A1"] = "Region"
@@ -34,7 +34,7 @@ for i, c in enumerate(cats, start=2):
 add_chart(ws2, "bar", title="Revenue by region",
           min_col=2, max_col=3, min_row=1, max_row=5,
           cats_col=1, cats_min_row=2, cats_max_row=5,
-          anchor="F2", is_countries=False)
+          anchor="F2", is_countries=False, value_kind="currency")
 
 out = "sample.xlsx"
 save_workbook(wb, out)

@@ -1,9 +1,9 @@
 ---
-name: excel-house-charts
-description: "Build native, editable Excel charts that follow our fixed house style (line and bar charts with specific colors, fonts, axes, gridlines, legend, and data-label rules). Use this skill WHENEVER the user asks to add, create, insert, or restyle a chart or graph in an .xlsx file — including phrases like 'graph this', 'chart the data', 'add a line/bar chart', 'plot these countries', or any request to visualize spreadsheet data as a chart. Always use this skill for Excel charts even if the user does not explicitly mention the house style, because the styling is the default expectation. Do NOT use for image/matplotlib charts, Google Sheets, or non-chart spreadsheet work."
+name: graph_pec
+description: "Build native, editable Excel charts that follow our fixed house style (line and bar charts with specific colors, fonts, axes, gridlines, data-label rules; no legend). Use this skill WHENEVER the user asks to add, create, insert, or restyle a chart or graph in an .xlsx file — including phrases like 'graph this', 'chart the data', 'add a line/bar chart', 'plot these countries', or any request to visualize spreadsheet data as a chart. Always use this skill for Excel charts even if the user does not explicitly mention the house style, because the styling is the default expectation. Do NOT use for image/matplotlib charts, Google Sheets, or non-chart spreadsheet work."
 ---
 
-# Excel House Charts
+# graph_pec — Progreso en Cifras house charts
 
 Build **native** Excel charts (real chart objects, editable in Excel) that match a fixed
 house style. Never substitute image charts unless the user explicitly asks for one — the
@@ -16,9 +16,12 @@ point of this skill is that every chart comes out identical to the rules below.
 2. Decide `chart_type` (`"line"` or `"bar"`) and whether the series are **countries**
    (set `is_countries=True` to apply the country color table).
 3. Get the title from the user — they always supply it.
-4. Call `add_chart(...)` from `scripts/excel_charts.py`. Place the chart in empty columns
+4. Decide the number format: `value_kind="currency"` (no decimals) or
+   `value_kind="percent"` (one decimal). If omitted, the helper infers it from the
+   data cells' number format (`%` → percent, otherwise no decimals).
+5. Call `add_chart(...)` from `scripts/excel_charts.py`. Place the chart in empty columns
    to the right of the data.
-5. Save with **`save_workbook(wb, path)`** (not `wb.save`). This applies the line-chart
+6. Save with **`save_workbook(wb, path)`** (not `wb.save`). This applies the line-chart
    label distribution and leader lines, which require XML post-processing openpyxl can't do.
 
 ```python
@@ -34,11 +37,12 @@ add_chart(
     cats_col=1, cats_min_row=2, cats_max_row=14,   # category labels
     anchor="H2",                                    # empty columns to the right
     is_countries=True,
+    value_kind="percent",                           # or "currency"
 )
 save_workbook(wb, "file.xlsx")     # saves AND distributes line labels + leader lines
 ```
 
-The helper resolves colors, fonts, axis styling, legend, and data labels automatically.
+The helper resolves colors, fonts, axis styling, legend removal, and data labels automatically.
 Read `scripts/excel_charts.py` if you need to extend it.
 
 > **Previewing:** LibreOffice does **not** render manually-positioned data labels or the
@@ -51,6 +55,7 @@ Read `scripts/excel_charts.py` if you need to extend it.
 **Chart types**
 - Line chart: line width **5 pt**.
 - Bar chart: **gap width 25%**.
+- Every series (line or bar) gets a different color.
 
 **Colors — countries.** When series are countries, use the exact color table in
 `scripts/excel_charts.py` (`_COUNTRY_TABLE`). If a country is present but not in the
@@ -67,13 +72,14 @@ otherwise Excel substitutes a fallback. The setting is always written into the f
 **Title.** The user always provides the title text. Gotham regular size 20, not bold.
 
 **Axes.** Both X and Y: line color black (#000000), weight **0.75 pt**. No axis titles.
-No tick marks. Labels in Gotham regular size 20, black, not bold, **no decimals**.
-For the X-axis: **always** rotate tick labels to **270° (vertical)** and set label
-position to **low**.
+No tick marks. Labels in Gotham regular size 20, black, not bold, **horizontal (0°) by
+default — even for bar charts**. Number format: **no decimals for currency, one decimal
+for percentages**. For the X-axis: **always** rotate tick labels to **270° (vertical)**
+and set label position to **low**.
 
 **Gridlines.** None.
 
-**Legend.** Position **bottom**, text in Gotham regular size 20 (not bold), black.
+**Legend.** **No legend.** (Line charts identify series through the last-point labels.)
 
 **Data labels**
 - Line charts: label **only the latest datapoint** of each series, showing **value +
@@ -81,9 +87,10 @@ position to **low**.
   — the helper spreads clustered last-point labels vertically (leaving well-separated ones
   in place) and turns on **leader lines colored #A6A6A6** so each moved label still points
   back to its datapoint.
-- Bar charts: show **only the value**, in the series color, rotated **270° (vertical)**.
+- Bar charts: show **only the value**, in the series color, **horizontal (0°)**.
 
-**Size & placement.** Chart size **8 cm height × 10.6 cm width**. Place the chart in
+**Size & placement.** Chart size **8 cm height × 10.6 cm width** (the instructions
+file says "pt", but 8 × 10.6 pt would be a postage stamp — cm is the intended unit). Place the chart in
 columns that are completely empty, usually just to the right of the data.
 
 ## Notes for extending

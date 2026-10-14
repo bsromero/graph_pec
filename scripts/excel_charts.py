@@ -32,7 +32,8 @@ BAR_GAP = 25                          # gap width %
 CHART_H_CM = 8.0
 CHART_W_CM = 10.6
 ROT_VERT = 16200000                   # 270 deg, in 1/60000 deg (vertical text)
-NUMFMT = "0"                          # no decimals
+NUMFMT_CURRENCY = "0"                 # currency / plain numbers: no decimals
+NUMFMT_PERCENT = "0.0"                # percentages: one decimal
 LEADER_COLOR = "A6A6A6"               # leader-line color
 # Label-distribution tuning (fractions of chart area):
 _PLOT_V_SPAN = 0.62   # approx. plot-area height as a fraction of the chart
@@ -127,7 +128,7 @@ def _make_title(text):
     return t
 
 
-def _style_axis(axis, rotate=False, is_x=False):
+def _style_axis(axis, numfmt, rotate=False, is_x=False):
     axis.delete = False
     axis.majorGridlines = None
     axis.minorGridlines = None
@@ -135,24 +136,24 @@ def _style_axis(axis, rotate=False, is_x=False):
     axis.minorTickMark = "none"
     axis.title = None
     axis.spPr = GraphicalProperties(ln=LineProperties(solidFill="000000", w=AXIS_LINE_EMU))
-    axis.number_format = NUMFMT
+    axis.number_format = numfmt
     axis.txPr = _rich("000000", rot=ROT_VERT if rotate else None)
     if is_x:
         axis.tickLblPos = "low"
 
 
-def _bar_labels(color):
+def _bar_labels(color, numfmt):
     dl = DataLabelList()
     for f in ("showVal",):
         setattr(dl, f, True)
     for f in ("showSerName", "showCatName", "showLegendKey", "showPercent", "showBubbleSize"):
         setattr(dl, f, False)
-    dl.numFmt = NUMFMT
-    dl.txPr = _rich(color, rot=ROT_VERT)
+    dl.numFmt = numfmt
+    dl.txPr = _rich(color)   # horizontal (0 deg)
     return dl
 
 
-def _line_labels(color, last_idx):
+def _line_labels(color, last_idx, numfmt):
     dl = DataLabelList()
     for f in ("showVal", "showSerName", "showCatName", "showLegendKey",
               "showPercent", "showBubbleSize"):
@@ -164,16 +165,35 @@ def _line_labels(color, last_idx):
     pt.showLegendKey = False
     pt.showPercent = False
     pt.showBubbleSize = False
-    pt.numFmt = NUMFMT
+    pt.numFmt = numfmt
     pt.separator = " "
     pt.txPr = _rich(color)
     dl.dLbl = [pt]
     return dl
 
 
+def _number_format(ws, min_col, max_col, first_row, max_row, value_kind):
+    """No decimals for currency, one decimal for percentages. Keeps the '%'
+    sign when the source cells are stored as Excel percentages (0.123)."""
+    src_pct = False
+    for r in range(first_row, max_row + 1):
+        for c in range(min_col, max_col + 1):
+            cell = ws.cell(row=r, column=c)
+            if isinstance(cell.value, (int, float)):
+                src_pct = "%" in (cell.number_format or "")
+                break
+        else:
+            continue
+        break
+    kind = (value_kind or ("percent" if src_pct else "currency")).lower()
+    if kind.startswith("perc") or kind == "%":
+        return NUMFMT_PERCENT + ("%" if src_pct else "")
+    return NUMFMT_CURRENCY
+
+
 def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
               cats_col, cats_min_row, cats_max_row, anchor,
-              is_countries=False, titles_from_data=True):
+              is_countries=False, titles_from_data=True, value_kind=None):
     """
     Add a styled native chart to worksheet `ws`.
 
@@ -184,6 +204,9 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
     cats_*     : the category-axis label column and its first/last data row.
     anchor     : top-left cell for the chart, e.g. 'H2' (use empty columns).
     is_countries : True to apply the country color table.
+    value_kind : 'currency' (no decimals) or 'percent' (one decimal). If None,
+                 it is inferred: a '%' in the first data cell's number format
+                 means percent, otherwise currency/no decimals.
     """
     chart_type = chart_type.lower()
     chart = LineChart() if chart_type == "line" else BarChart()
@@ -206,26 +229,28 @@ def add_chart(ws, chart_type, title, min_col, max_col, min_row, max_row,
     colors = resolve_colors(header_names, is_countries)
 
     n_points = cats_max_row - cats_min_row + 1
+    numfmt = _number_format(ws, min_col, max_col,
+                            min_row + 1 if titles_from_data else min_row,
+                            max_row, value_kind)
 
     for s, color in zip(chart.series, colors):
         s.graphicalProperties = GraphicalProperties()
         if chart_type == "line":
             s.graphicalProperties.line = LineProperties(solidFill=color, w=LINE_WIDTH_EMU)
             s.smooth = False
-            s.dLbls = _line_labels(color, n_points - 1)
+            s.dLbls = _line_labels(color, n_points - 1, numfmt)
         else:
             s.graphicalProperties.solidFill = color
             s.graphicalProperties.line = LineProperties(solidFill=color)
-            s.dLbls = _bar_labels(color)
+            s.dLbls = _bar_labels(color, numfmt)
 
     chart.title = _make_title(title)
-    # X-axis labels are always vertical (270 deg) with low label position.
-    _style_axis(chart.x_axis, rotate=True, is_x=True)
-    _style_axis(chart.y_axis, rotate=False, is_x=False)
+    # X-axis labels are always vertical (270 deg) with low label position;
+    # Y-axis labels stay horizontal (0 deg).
+    _style_axis(chart.x_axis, numfmt, rotate=True, is_x=True)
+    _style_axis(chart.y_axis, numfmt, rotate=False, is_x=False)
 
-    chart.legend.position = "b"
-    chart.legend.overlay = False
-    chart.legend.txPr = _rich("000000")   # Gotham 20 regular, black
+    chart.legend = None   # no legend: line labels carry the series name
 
     chart.height = CHART_H_CM
     chart.width = CHART_W_CM
